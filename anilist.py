@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 import requests
 from mezmorize import Cache
 
@@ -13,6 +11,21 @@ def _make_request(query: str, variables: dict):
         'query': query,
         'variables': variables
     }).json()
+
+
+def _get_all_pages(query, variables, *, query_field='mediaList', _page=0):
+    response = _make_request(query, variables={**variables, 'page': _page})
+
+    # Can make this asynchronous
+    data = response['data']['Page']
+    has_next_page = data['pageInfo']['hasNextPage']
+    query_list = data[query_field]
+
+    if has_next_page:
+        print(f'next {_page}')
+        return list([*query_list, *_get_all_pages(query, variables, _page=_page + 1)])
+
+    return list(query_list)
 
 
 def medialist_to_tuple(media_list):
@@ -43,25 +56,8 @@ query($userName: String, $page: Int) {
 
 
 @cache.memoize()
-def get_user_list(user_name: str, _page: int = 0) -> list:
-    return _get_user_list(user_name, _page)
-
-
-def _get_user_list(user_name: str, _page: int = 0) -> list:
-    response = _make_request(query=GET_USER_LIST_QUERY, variables={
-        'userName': user_name,
-        'page': _page
-    })
-
-    data = response['data']['Page']
-    has_next_page = data['pageInfo']['hasNextPage']
-    media_list = medialist_to_tuple(data['mediaList'])
-
-    if has_next_page:
-        print(f'next {_page}')
-        return list([*media_list, *_get_user_list(user_name, _page + 1)])
-
-    return list(media_list)
+def get_user_list(user_name: str) -> list:
+    return medialist_to_tuple(_get_all_pages(query=GET_USER_LIST_QUERY, variables={'userName': user_name}))
 
 
 GET_USER_ID_QUERY = """
@@ -89,6 +85,9 @@ def get_user_id(user_name: str) -> int | None:
 GET_MISSING_MEDIA_query = """
 query($userIds: [Int], $mediaIds: [Int]) {
   Page(page: 0, perPage: 50) {
+    pageInfo {
+        hasNextPage
+    }
     mediaList(userId_in: $userIds, mediaId_in: $mediaIds) {
       user {
         id
@@ -108,19 +107,22 @@ query($userIds: [Int], $mediaIds: [Int]) {
 """
 
 
-@cache.memoize()
 def get_missing_media(user_ids: [int], media_ids: [int]):
-    response = _make_request(query=GET_MISSING_MEDIA_query, variables={
+    # Sorting for caching
+    return _get_missing_media(sorted(user_ids), sorted(media_ids))
+
+
+@cache.memoize()
+def _get_missing_media(user_ids: [int], media_ids: [int]):
+    data = _get_all_pages(query=GET_MISSING_MEDIA_query, variables={
         'userIds': user_ids,
         'mediaIds': media_ids
     })
 
-    data = response['data']['Page']
+    # Initialize with all user ids.
+    user_dict = {k: [] for k in user_ids}
 
-    # Initialize with all user ids. Doesn't have to be defaultdict
-    user_dict = defaultdict(list, {k: [] for k in user_ids})
-
-    for media_list in data['mediaList']:
+    for media_list in data:
         user_dict[media_list['user']['id']].append(media_list)
 
     for k, v in user_dict.items():
