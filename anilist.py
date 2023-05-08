@@ -3,7 +3,8 @@ import sys
 import requests
 from mezmorize import Cache
 
-cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='cache')
+# Cache for 1 year because the library hates me
+cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='cache', CACHE_DEFAULT_TIMEOUT=365 * 24 * 60 * 60)
 
 URL_BASE = 'https://graphql.anilist.co'
 
