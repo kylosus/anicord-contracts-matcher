@@ -1,3 +1,5 @@
+import sys
+
 import requests
 from mezmorize import Cache
 
@@ -76,7 +78,7 @@ def get_user_id(user_name: str) -> int | None:
     })
 
     if 'errors' in response and len(response['errors']) != 0:
-        print(f'{user_name} not found')
+        print(f'{user_name} not found', file=sys.stderr)
         return None
 
     return response['data']['User']['id']

@@ -1,5 +1,6 @@
 import random
 import re
+import sys
 
 import anilist
 
@@ -24,7 +25,7 @@ if __name__ == '__main__':
             match = re.search(r'(?<=user/)([a-zA-Z0-9]+)/?', u)
 
             if not match:
-                print(f'Did not match {u}')
+                print(f'Not an anilist user: {u}', file=sys.stderr)
                 continue
 
             match = match.group(1)
