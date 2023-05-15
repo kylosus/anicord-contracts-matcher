@@ -86,8 +86,8 @@ def get_user_id(user_name: str) -> int | None:
 
 
 GET_MISSING_MEDIA_query = """
-query($userIds: [Int], $mediaIds: [Int]) {
-  Page(page: 0, perPage: 50) {
+query($page: Int,  $userIds: [Int], $mediaIds: [Int]) {
+  Page(page: $page, perPage: 50) {
     pageInfo {
         hasNextPage
     }
