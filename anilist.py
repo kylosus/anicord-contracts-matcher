@@ -1,4 +1,5 @@
 import sys
+import time
 
 import requests
 from mezmorize import Cache
@@ -9,11 +10,22 @@ cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='cache', CACHE_DEFAULT_TIMEOUT=
 URL_BASE = 'https://graphql.anilist.co'
 
 
-def _make_request(query: str, variables: dict):
-    return requests.post(url=URL_BASE, json={
-        'query': query,
-        'variables': variables
-    }).json()
+def _make_request(query: str, variables: dict, timeout_seconds=5):
+    # retry on 429:
+    while True:
+        response = requests.post(url=URL_BASE, json={
+            'query': query,
+            'variables': variables
+        })
+
+        if response.status_code != 429:
+            break
+
+        print(f'429: {response}. Waiting {timeout_seconds} seconds...', file=sys.stderr)
+        time.sleep(timeout_seconds)
+        timeout_seconds *= 2
+
+    return response.json()
 
 
 def _get_all_pages(query, variables, *, query_field='mediaList', _page=0):
@@ -79,7 +91,7 @@ def get_user_id(user_name: str) -> int | None:
     })
 
     if 'errors' in response and len(response['errors']) != 0:
-        print(f'{user_name} not found', file=sys.stderr)
+        print(f'{user_name} not found ({response})', file=sys.stderr)
         return None
 
     return response['data']['User']['id']
