@@ -10,7 +10,7 @@ POOL_FILE_NAME = './pool.txt'
 
 def _parse_file(file_name):
     with open(file_name, 'r') as file:
-        data = file.read()
+        data = file.read().strip()
         return data.split('\n')
 
 
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     anilist_usernames = []
     for u in anilist_usernames_file:
         # Simpler this way
-        if u.startswith('https://'):
+        if u.lower().startswith('https://'):
             match = re.search(r'(?<=user/)([a-zA-Z0-9]+)/?', u)
 
             if not match:
