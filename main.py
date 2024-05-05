@@ -5,8 +5,8 @@ from collections import defaultdict, OrderedDict
 
 import anilist
 
-USERNAMES_FILE_NAME = './usernames.txt'
-POOL_FILE_NAME = './pool.txt'
+USERNAMES_FILE_NAME = './data/usernames.txt'
+POOL_FILE_NAME = './data/pool.txt'
 
 
 def _parse_file(file_name):
