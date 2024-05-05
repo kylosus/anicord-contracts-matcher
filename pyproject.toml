@@ -1,0 +1,16 @@
+[project]
+name = "contracts-matcher"
+version = "0.0.1"
+
+dependencies = [
+  "requests",
+  "mezmorize",
+]
+requires-python = ">=3.8"
+
+authors = [
+  {name = "kylosus", email = "jokersus.cava@gmail.com"},
+]
+description = "Automatic AniList matching for Anicord Contracts"
+readme = "README.md"
+#license = {file = "LICENSE.txt"}
