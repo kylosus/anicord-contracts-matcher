@@ -19,5 +19,6 @@ year and the script can safely be re-run.
 - Run `main.py`
 
 ### Spring 2024
-`pool.txt` in the repo contains staff picks for the season
-`usernames.txt` has been redacted for privacy reasons
+`data/pool.txt` in the repo contains staff picks for the season
+
+`data/usernames.txt` has been redacted for privacy reasons
