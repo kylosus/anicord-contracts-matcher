@@ -2,15 +2,16 @@ import random
 import re
 import sys
 from collections import defaultdict, OrderedDict
+from pathlib import Path
 
 import anilist
 
-USERNAMES_FILE_NAME = './data/usernames.txt'
-POOL_FILE_NAME = './data/pool.txt'
+USERNAMES_FILE_NAME = Path('./data/usernames.txt')
+POOL_FILE_NAME = Path('./data/pool.txt')
 
 
-def _parse_file(file_name):
-    with open(file_name, 'r') as file:
+def _parse_file(file_name: Path):
+    with file_name.open(mode='r') as file:
         data = file.read().strip()
         return data.split('\n')
 
