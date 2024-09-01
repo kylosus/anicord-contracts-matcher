@@ -39,7 +39,13 @@ if __name__ == '__main__':
 
     # We want to preserve the original insertion order
     anilist_users = OrderedDict((user_id, u) for u in anilist_usernames if u and (user_id := anilist.get_user_id(u)))
-    anilist_media = {int(re.search(r'(?:anime|manga)/(\d+)/', link).group(1)): link for link in anilist_links}
+
+    anilist_media = {}
+
+    for link in anilist_links:
+        anilistId = int(re.search(r'(?:anime|manga)/(\d+)/', link).group(1))
+        parts = link.partition(" | ")
+        anilist_media[anilistId] = anilist.AnilistEntry(parts[0], parts[2])
 
     anilist_media_ids = list(anilist_media.keys())
 

@@ -12,7 +12,7 @@ class User(NamedTuple):
 
 
 class AnilistEntry(NamedTuple):
-    id: int
+    url: str
     flag: str
 
 
@@ -124,6 +124,7 @@ query($page: Int,  $userIds: [Int], $mediaIds: [Int]) {
       media {
         status
         id
+        episodes
         title {
           userPreferred
         }
