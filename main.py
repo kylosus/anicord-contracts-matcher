@@ -23,7 +23,8 @@ if __name__ == '__main__':
     anilist_usernames = []
     for u in anilist_usernames_file:
         # Simpler this way
-        if u.lower().startswith('https://'):
+        us = u.partition(" | ")
+        if us[0].lower().startswith('https://'):
             match = re.search(r'(?<=user/)([a-zA-Z0-9]+)/?', u)
 
             if not match:
@@ -32,9 +33,9 @@ if __name__ == '__main__':
 
             match = match.group(1)
         else:
-            match = u
+            match = us[0]
 
-        anilist_usernames.append(match)
+        anilist_usernames.append(anilist.User(match, us[2]))
 
     # We want to preserve the original insertion order
     anilist_users = OrderedDict((user_id, u) for u in anilist_usernames if u and (user_id := anilist.get_user_id(u)))

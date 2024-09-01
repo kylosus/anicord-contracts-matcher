@@ -1,8 +1,20 @@
 import sys
 import time
+from typing import NamedTuple
 
 import requests
 from mezmorize import Cache
+
+
+class User(NamedTuple):
+    username: str
+    flag: str
+
+
+class AnilistEntry(NamedTuple):
+    id: int
+    flag: str
+
 
 # Cache for 1 year because the library hates me
 cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='cache', CACHE_DEFAULT_TIMEOUT=365 * 24 * 60 * 60)
@@ -85,13 +97,13 @@ query($userName: String) {
 
 
 @cache.memoize()
-def get_user_id(user_name: str) -> int | None:
+def get_user_id(user: User) -> int | None:
     response = _make_request(query=GET_USER_ID_QUERY, variables={
-        'userName': user_name
+        'userName': user.username
     })
 
     if 'errors' in response and len(response['errors']) != 0:
-        print(f'{user_name} not found ({response})', file=sys.stderr)
+        print(f'{user.username} not found ({response})', file=sys.stderr)
         return None
 
     return response['data']['User']['id']
