@@ -9,11 +9,12 @@ from mezmorize import Cache
 class User(NamedTuple):
     username: str
     flag: str
+    user_id: int
 
 
 class AnilistEntry(NamedTuple):
     url: str
-    flag: str
+    isTrash: bool
 
 
 # Cache for 1 year because the library hates me
@@ -57,7 +58,7 @@ def _get_all_pages(query, variables, *, query_field='mediaList', _page=0):
 
 def medialist_to_tuple(media_list):
     media_list = filter(lambda m: m['status'] != 'PLANNING', media_list)
-    return list(map(lambda m: (m['media']['id'], m['media']['title']['userPreferred']), media_list))
+    return list(map(lambda m: (m['media']['id'], m['media']['title']['userPreferred'], m['media']['type'], m['media']['episodes']), media_list))
 
 
 GET_USER_LIST_QUERY = """
@@ -125,6 +126,7 @@ query($page: Int,  $userIds: [Int], $mediaIds: [Int]) {
         status
         id
         episodes
+        type
         title {
           userPreferred
         }

@@ -9,12 +9,25 @@ import anilist
 USERNAMES_FILE_NAME = Path('./data/usernames.txt')
 POOL_FILE_NAME = Path('./data/pool.txt')
 
+selections = defaultdict(int)
+special_selections = defaultdict(int)
+trash_selections = defaultdict(int)
 
 def _parse_file(file_name: Path):
     with file_name.open(mode='r') as file:
         data = file.read().strip()
         return data.split('\n')
 
+
+def select_anime(user_id: int, missing_media, media_list, avoid_long: bool = False, is_trash: bool = False):
+    possible_media = missing_media.difference((x[0] for x in media_list))
+    choices = random.choices(list(possible_media), k=len(possible_media))
+    choice = min([(c, trash_selections[c] if is_trash else special_selections[c]) for c in choices], key=lambda x: x[1])
+    if is_trash:
+        trash_selections[choice[0]] += 1
+    else :
+        special_selections[choice[0]] += 1
+    return choice[0]
 
 if __name__ == '__main__':
     anilist_links = _parse_file(POOL_FILE_NAME)
@@ -35,7 +48,7 @@ if __name__ == '__main__':
         else:
             match = us[0]
 
-        anilist_usernames.append(anilist.User(match, us[2]))
+        anilist_usernames.append(anilist.User(match, us[2], anilist.get_user_id(match)))
 
     # We want to preserve the original insertion order
     anilist_users = OrderedDict((user_id, u) for u in anilist_usernames if u and (user_id := anilist.get_user_id(u)))
@@ -45,16 +58,30 @@ if __name__ == '__main__':
     for link in anilist_links:
         anilistId = int(re.search(r'(?:anime|manga)/(\d+)/', link).group(1))
         parts = link.partition(" | ")
-        anilist_media[anilistId] = anilist.AnilistEntry(parts[0], parts[2])
+        anilist_media[anilistId] = anilist.AnilistEntry(parts[0], parts[2] == "T")
 
-    anilist_media_ids = list(anilist_media.keys())
+    # both_users exists to allow us to do some optimizations around who gets what and disallowing double 2-cours.
+    trash_users = sorted([u.user_id for u in anilist_usernames if u.flag in {"T", "B"}])
+    special_users = sorted([u.user_id for u in anilist_usernames if u.flag in {"S", "B"}])
+    both_users = sorted([u.user_id for u in anilist_usernames if u.flag == "B"])
 
+
+    trash_anime = [kvp[0] for kvp in anilist_media.items() if kvp[1].isTrash]
+    special_anime = [kvp[0] for kvp in anilist_media.items() if not kvp[1].isTrash]
     # Anime users haven't seen
-    users_missing_media = anilist.get_missing_media(user_ids=list(anilist_users.keys()), media_ids=anilist_media_ids)
+    users_missing_staff_media = anilist.get_missing_media(user_ids=list(anilist_users.keys()), media_ids=special_anime)
+    users_missing_trash_media = anilist.get_missing_media(user_ids=trash_users, media_ids=trash_anime)
 
-    selections = defaultdict(int)
-    anilist_media_ids = set(anilist_media_ids)
-    users_assigned_anime = anilist_users.copy()
+    users_assigned_specials = {}
+    users_assigned_trash = {}
+
+    # Users that signed up for both get priority because Bpen says so.
+
+    for user_id in both_users:
+        trash_first = random.randint(0, 1) == 1
+        first_anime = None
+        if trash_first:
+            first_anime = select_anime(user_id, users_missing_trash_media[])
 
     for user_id, media_list in sorted(users_missing_media.items()):
         possible_media = anilist_media_ids.difference((x[0] for x in media_list))
