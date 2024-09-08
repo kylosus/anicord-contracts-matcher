@@ -41,14 +41,14 @@ if __name__ == '__main__':
     anilist_usernames_file = _parse_file(USERNAMES_FILE_NAME)
 
     #Call anilist to get information about the anime we want to watch
-    anilist_isTrash = {} #Look, I know it's not pythonic and all that, but it allows me to save expensive API calls or cycling through the file list again.
+    anilist_isTrash: dict[int, bool] =  {} #Look, I know it's not pythonic and all that, but it allows me to save expensive API calls or cycling through the file list again.
 
     for link in anilist_links:
         anilistId = int(re.search(r'(?:anime|manga)/(\d+)/', link).group(1))
         parts = link.partition(" | ")
         anilist_isTrash[anilistId] = parts[2] == "T"
 
-    anilist_data = anilist.get_media_information(anilist_isTrash.keys())
+    anilist_data = anilist.get_media_information(list(anilist_isTrash.keys()))
 
     for entry in anilist_data:
         item_id = int(entry["id"]) #Pre-extracting only things that need read multiple times for human readability.
@@ -99,8 +99,8 @@ if __name__ == '__main__':
     trash_media_users_ineligible_for = anilist.get_media_users_are_ineligible_for(user_ids=trash_users, media_ids=trash_anime)
 
     #We can now generate lists for which anime the user _is_ eligible to be selected for.
-    staff_media_users_eligible_for = dict[int, list[int]]() #Key is User ID, value is a list of Media IDs that user is eligible to be given.
-    trash_media_users_eligible_for = dict[int, list[int]]()
+    staff_media_users_eligible_for: dict[int, list[int]] = {} #Key is User ID, value is a list of Media IDs that user is eligible to be given.
+    trash_media_users_eligible_for: dict[int, list[int]] = {}
 
     for u in staff_users:
         staff_media_users_eligible_for[u] = list(special_anime.difference(staff_media_users_ineligible_for[u]))

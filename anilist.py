@@ -157,7 +157,7 @@ def _make_request(query: str, variables: dict):
 
     return response.json()
 
-def get_media_users_are_ineligible_for(user_ids: list[int], media_ids: list[int]) -> defaultdict[int, list[int]]:
+def get_media_users_are_ineligible_for(user_ids: list[int], media_ids: set[int]) -> defaultdict[int, list[int]]:
     # Sorting for caching
     return _get_media_users_are_ineligible_for(sorted(user_ids), sorted(media_ids))
 
