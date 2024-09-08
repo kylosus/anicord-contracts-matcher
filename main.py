@@ -21,7 +21,7 @@ def _parse_file(file_name: Path):
         return data.split('\n')
 
 
-def select_anime(possible_media: [int], is_trash: bool = False) -> int:
+def select_anime(possible_media: list[int], is_trash: bool = False) -> int:
     if len(possible_media) == 0: return -1
     choices = random.choices(list(possible_media), k=len(possible_media))
 
@@ -99,8 +99,8 @@ if __name__ == '__main__':
     trash_media_users_ineligible_for = anilist.get_media_users_are_ineligible_for(user_ids=trash_users, media_ids=trash_anime)
 
     #We can now generate lists for which anime the user _is_ eligible to be selected for.
-    staff_media_users_eligible_for = dict[int, [int]]() #Key is User ID, value is a list of Media IDs that user is eligible to be given.
-    trash_media_users_eligible_for = dict[int, [int]]()
+    staff_media_users_eligible_for = dict[int, list[int]]() #Key is User ID, value is a list of Media IDs that user is eligible to be given.
+    trash_media_users_eligible_for = dict[int, list[int]]()
 
     for u in staff_users:
         staff_media_users_eligible_for[u] = list(special_anime.difference(staff_media_users_ineligible_for[u]))

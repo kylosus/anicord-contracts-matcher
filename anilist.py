@@ -157,11 +157,11 @@ def _make_request(query: str, variables: dict):
 
     return response.json()
 
-def get_media_users_are_ineligible_for(user_ids: [int], media_ids: [int]) -> defaultdict[int, [int]]:
+def get_media_users_are_ineligible_for(user_ids: list[int], media_ids: list[int]) -> defaultdict[int, list[int]]:
     # Sorting for caching
     return _get_media_users_are_ineligible_for(sorted(user_ids), sorted(media_ids))
 
-def get_media_information(media_ids: [int]):
+def get_media_information(media_ids: list[int]):
     return _get_media_information(sorted(media_ids))
 
 @cache.memoize()
@@ -178,13 +178,13 @@ def get_user_id(user: User) -> int | None:
 
 
 @cache.memoize()
-def _get_media_information(media_ids: [int]):
+def _get_media_information(media_ids: list[int]):
     data = _get_all_pages(query=GET_MEDIA_INFORMATION_query, query_field="media", variables={'mediaIds': media_ids})
     return data
 
 
 @cache.memoize()
-def _get_media_users_are_ineligible_for(user_ids: [int], media_ids: [int]) -> defaultdict[int, [int]]:
+def _get_media_users_are_ineligible_for(user_ids: list[int], media_ids: list[int]) -> defaultdict[int, list[int]]:
     data = _get_all_pages(query=GET_MEDIA_IN_USERS_LIST_query, variables={
         'userIds': user_ids,
         'mediaIds': media_ids
