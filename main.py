@@ -5,12 +5,19 @@ from collections import defaultdict, OrderedDict
 from pathlib import Path
 
 import anilist
-from anilist import AnilistEntry
+from anilist import User, AnilistEntry
+
+# For convenience
+DEFAULT_ANILIST_ENTRY = AnilistEntry(id=-1, url="***NOTHING***", jp_title="***NOTHING***",
+                                             en_title="***NOTHING***", isAnime=False, isTrash=False, isLongAnime=False)
 
 USERNAMES_FILE_NAME = Path('./data/usernames.txt')
 POOL_FILE_NAME = Path('./data/pool.txt')
 
-anilist_media_information = dict[int, AnilistEntry]()
+# anilist_media_information = dict[int, AnilistEntry](
+#     {-1: DEFAULT_ANILIST_ENTRY}
+# )
+anilist_pool: list[AnilistEntry] = []
 anilist_users = OrderedDict() # We want to preserve the original insertion order, this means that older anilist users don't have an "advantage"
 staff_selections = defaultdict(int)
 trash_selections = defaultdict(int)
@@ -21,20 +28,25 @@ def _parse_file(file_name: Path):
         return data.split('\n')
 
 
-def select_anime(possible_media: list[int], is_trash: bool = False) -> int:
-    if len(possible_media) == 0: return -1
+def select_anime(possible_media: list[AnilistEntry], score_episodes=True) -> AnilistEntry:
+    if len(possible_media) == 0: return DEFAULT_ANILIST_ENTRY
+
     choices = random.choices(list(possible_media), k=len(possible_media))
+    selections = trash_selections if possible_media[0].isTrash else staff_selections
 
-    choice = choices[0]
-    for c in choices[1:]:
-        if c == -1: continue
-        if is_trash and trash_selections[c] < trash_selections[choice]: choice = c
-        if not is_trash and staff_selections[c] < staff_selections[choice]: choice = c
-
-    if is_trash:
-        trash_selections[choice] += 1
+    # Select the entry with the current lowest number of assignments
+    # If score_episodes is set, it will use an alternate scoring system that prioritizes episode count
+    # TODO: not clean
+    if not score_episodes:
+        choice, _ = min([(c, selections[c]) for c in choices], key=lambda x: x[1])
     else:
-        staff_selections[choice] += 1
+        # Specially handle division by 0 with an arbitrarily selected large number
+        scores = [(0.2 * selections[c] + 0.8 * c.episodes) or 10e-9 for c in choices]
+        inverted_scores = [1 / score for score in scores]
+        choice = random.choices(choices, weights=inverted_scores, k=1)[0]
+
+    selections[choice] += 1
+
     return choice
 
 if __name__ == '__main__':
@@ -54,6 +66,7 @@ if __name__ == '__main__':
     for entry in anilist_data:
         item_id = int(entry["id"]) #Pre-extracting only things that need read multiple times for human readability.
         isAnime = entry["type"] == "ANIME"
+        # Average number of episodes, for manga
         episodes = entry['episodes'] or 18 # TODO
 
         isLongAnime = False if not isAnime else episodes >= 16
@@ -114,51 +127,37 @@ if __name__ == '__main__':
     users_assigned_trash = dict[User, AnilistEntry]()
 
     # Users that signed up for both get priority because Bpen says so (also because they're most likely to throw the selection balance out of whack).
+    for user in both_users:
+        # Merge both lists and randomly select one
+        eligible_all = staff_users_eligible_media[user] + trash_users_eligible_media[user]
 
-    for user_id in both_users:
-        # First check both lists and see if one of them only contains long shows.
-        # If so, we'll select from that list first, and limit the other half to short shows.
-        # Note: a user can still receive two long shows if that's all they're eligible for.
+        # Alternatively can just select the lowest episode count, but it's more likely to assign manga
+        # eligible_all_sorted = list(sorted(eligible_all, key=lambda m: m.episodes))
+        # eligible_min_episodes = min(eligible_all, key=lambda m: m.episodes)
 
-        elig_short_staff = [int(k) for k in staff_media_users_eligible_for[user_id] if not anilist_media_information[k].isLongAnime]
-        elig_short_trash = [int(k) for k in trash_media_users_eligible_for[user_id] if not anilist_media_information[k].isLongAnime]
+        # Just in case, make sure the list is unique
+        assert list(set(eligible_all)) != list(eligible_all)
 
-        # Flip a coin to see what will get assigned first
-        trash_first = random.randint(0, 1) == 1
-        force_two_long = False
+        # Select one short show
+        # Bottom 33% of the shows for "better" randomness
+        # An even better way would be to select randomly with inverse weights, but it's a little
+        # more work and this is likely to perform fine
+        # eligible_short = sorted(eligible_all, key=lambda m: m.episodes)[:len(eligible_all) // 2]
 
-        # Override the coin if needed, if they're unlucky enough to be forced into two long shows we'll abide by the coin, not that it really matters
-        # How this works:
-        # If a user has eligible short entries on both sides, we abide by the coin.
-        #   If they pull a short show (or manga) in their first pull it uses their entire list for the second pull as well, they might end up with two short, who knows.
-        #   If they pull a long show on their first pull we reduce the pool to just short shows (and manga) for the second pull.
-        # If a user is going to be forced to have a long show for one type (but has eligible short/manga in the other) we force the pull on the long side first.
-        #   This then means the check for a long show is triggered, and we automatically use the short list on the other one
-        # If a User has no eligible short shows/manga on either side we set the `force_two_long` bool to true. So that when they are assigned their shows it doesn't try to give them nothing on the second one.
-        if len(elig_short_staff) == 0 and len(elig_short_trash) == 0: force_two_long = True
-        elif len(elig_short_staff) == 0: trash_first = False
-        elif len(elig_short_trash) == 0: trash_first = True
+        # Assign one randomly. Remove from the eligible list
+        media_short = select_anime(eligible_all, score_episodes=True)
+        eligible_all.remove(media_short)
 
-        if trash_first:
-            first_anime = select_anime(trash_media_users_eligible_for[user_id], True)
-            users_assigned_trash[user_id] = first_anime
-            second_anime = -1
-            if first_anime != -1 and anilist_media_information[first_anime].isLongAnime and not force_two_long:
-                second_anime = select_anime(elig_short_staff, False)
-            else:
-                second_anime = select_anime(staff_media_users_eligible_for[user_id], False)
-            users_assigned_staff[user_id] = second_anime
+        # Select another random from the other list
+        # Not really clean
+        if media_short.isTrash:
+            users_assigned_trash[user] = media_short
+            media_other = select_anime(list(eligible_all))
+            users_assigned_staff[user] = media_other
         else:
-            first_anime = select_anime(staff_media_users_eligible_for[user_id], False)
-            users_assigned_staff[user_id] = first_anime
-            second_anime = -1
-            if first_anime != -1 and anilist_media_information[first_anime].isLongAnime and not force_two_long:
-                second_anime = select_anime(elig_short_trash, True)
-            else:
-                second_anime = select_anime(trash_media_users_eligible_for[user_id], True)
-            users_assigned_trash[user_id] = second_anime
-
-    # That's the hard stuff out of the way. Now for the much easier steps of finishing assigning staff/veterans and then trash.
+            users_assigned_staff[user] = media_short
+            media_other = select_anime(list(eligible_all))
+            users_assigned_trash[user] = media_other
 
     for u in staff_users:
         if u in both_users: continue
