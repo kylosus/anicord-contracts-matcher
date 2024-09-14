@@ -1,6 +1,8 @@
 import random
 import re
 import sys
+import warnings
+import csv
 from collections import defaultdict, OrderedDict
 from pathlib import Path
 
@@ -78,9 +80,7 @@ if __name__ == '__main__':
         else:
             match = us[0]
 
-        print(f"Getting id for user: {match}")
         user_id = anilist.get_user_id(match)
-        print(f"user_id: {user_id}")
         if user_id is None:
             print(f'Anilist user not found: {u}', file=sys.stderr)
             continue
@@ -109,7 +109,7 @@ if __name__ == '__main__':
         staff_media_users_eligible_for[u] = list(special_anime.difference(staff_media_users_ineligible_for[u]))
 
     for u in trash_users:
-        trash_media_users_eligible_for[u] = list(special_anime.difference(trash_media_users_ineligible_for[u]))
+        trash_media_users_eligible_for[u] = list(trash_anime.difference(trash_media_users_ineligible_for[u]))
 
     users_assigned_staff = dict[int, int]() #Key is User ID, Value is media ID, we'll then format the data out of the respective dicts at the end.
     users_assigned_trash = dict[int, int]()
@@ -136,9 +136,15 @@ if __name__ == '__main__':
         # If a user is going to be forced to have a long show for one type (but has eligible short/manga in the other) we force the pull on the long side first.
         #   This then means the check for a long show is triggered, and we automatically use the short list on the other one
         # If a User has no eligible short shows/manga on either side we set the `force_two_long` bool to true. So that when they are assigned their shows it doesn't try to give them nothing on the second one.
-        if len(elig_short_staff) == 0 and len(elig_short_trash) == 0: force_two_long = True
-        elif len(elig_short_staff) == 0: trash_first = False
-        elif len(elig_short_trash) == 0: trash_first = True
+        if len(elig_short_staff) == 0 and len(elig_short_trash) == 0:
+            force_two_long = True
+            warnings.warn(f"User: {anilist_users[user_id]} will be forced to watch two long shows due to lack of eligible short shows")
+        elif len(elig_short_staff) == 0:
+            trash_first = False
+            print(f"User: {anilist_users[user_id]} will be forced to watch a long staff special due to lack of eligible short shows")
+        elif len(elig_short_trash) == 0:
+            trash_first = True
+            print(f"User: {anilist_users[user_id]} will be forced to watch a long trash special due to lack of eligible short shows")
 
         if trash_first:
             first_anime = select_anime(trash_media_users_eligible_for[user_id], True)
@@ -174,12 +180,20 @@ if __name__ == '__main__':
     anilist_media_information[-1] = anilist.AnilistEntry(-1, "***NOTHING***", "***NOTHING***", "***NOTHING***", False, False, False)
 
     print("\nStaff/Veteran Specials:\n")
-    for user, media in users_assigned_staff.items():
-        print(f"{anilist_users[user].username}: \"{anilist_media_information[media].en_title if anilist_media_information[media].en_title else anilist_media_information[media].jp_title}\" {'Anime' if anilist_media_information[media].isAnime else 'Manga'}")
+    with open('data/assigned_staff.csv', 'w', newline='', encoding='utf-8') as csvfile:
+        csvwriter = csv.writer(csvfile, dialect='excel', quoting=csv.QUOTE_ALL)
+        csvwriter.writerow(['Username', 'Assigned Media', 'Type', 'Anilist Link'])
+        for user, media in users_assigned_staff.items():
+            csvwriter.writerow([anilist_users[user].username, anilist_media_information[media].en_title if anilist_media_information[media].en_title else anilist_media_information[media].jp_title, 'Anime' if anilist_media_information[media].isAnime else 'Manga', anilist_media_information[media].url])
+            print(f"{anilist_users[user].username}: \"{anilist_media_information[media].en_title if anilist_media_information[media].en_title else anilist_media_information[media].jp_title}\" {'Anime' if anilist_media_information[media].isAnime else 'Manga'}")
 
     print("\n------------------------------------\nTrash Specials:\n")
-    for user, media in users_assigned_trash.items():
-        print(f"{anilist_users[user].username}: \"{anilist_media_information[media].en_title if anilist_media_information[media].en_title else anilist_media_information[media].jp_title}\" {'Anime' if anilist_media_information[media].isAnime else 'Manga'}")
+    with open('data/assigned_trash.csv', 'w', newline='', encoding='utf-8') as csvfile:
+        csvwriter = csv.writer(csvfile, dialect='excel', quoting=csv.QUOTE_ALL)
+        csvwriter.writerow(['Username', 'Assigned Media', 'Type', 'Anilist Link'])
+        for user, media in users_assigned_trash.items():
+            csvwriter.writerow([anilist_users[user].username, anilist_media_information[media].en_title if anilist_media_information[media].en_title else anilist_media_information[media].jp_title, 'Anime' if anilist_media_information[media].isAnime else 'Manga', anilist_media_information[media].url])
+            print(f"{anilist_users[user].username}: \"{anilist_media_information[media].en_title if anilist_media_information[media].en_title else anilist_media_information[media].jp_title}\" {'Anime' if anilist_media_information[media].isAnime else 'Manga'}")
 
     print("\n------------------------------------\nStats:\n")
     missing_staff_list = [u for u in users_assigned_staff if users_assigned_staff[u] == -1]
@@ -203,3 +217,12 @@ if __name__ == '__main__':
     print("\nTrash Specials:")
     for a in trash_anime:
         print(f"{anilist_media_information[a].en_title if anilist_media_information[a].en_title else anilist_media_information[a].jp_title}: {trash_selections[a]}")
+
+    print("\n------------------------------------\nLength Check for users assigned from both lists:\n")
+    for u in both_users:
+        if anilist_media_information[users_assigned_staff[u]].isLongAnime and anilist_media_information[users_assigned_trash[u]].isLongAnime:
+            warnings.warn(f"User: {anilist_users[u].username.ljust(20)} was assigned two long anime shows. Please double check this! (there should be another warning higher in the console for this same user)")
+        elif anilist_media_information[users_assigned_staff[u]].isLongAnime or anilist_media_information[users_assigned_trash[u]].isLongAnime:
+            print(f"User: {anilist_users[u].username.ljust(20)} was assigned one long and one short show")
+        else:
+            print(f"User: {anilist_users[u].username.ljust(20)} was assigned two shorts shows")
