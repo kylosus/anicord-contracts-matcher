@@ -8,6 +8,7 @@ from mezmorize import Cache
 
 DEFAULT_CONTRACT_TYPE = "S"
 
+
 @dataclass(frozen=True)
 class AnilistItem:
     id: int
@@ -17,6 +18,7 @@ class AnilistItem:
 
     def __eq__(self, other):
         return self.id == other.id
+
 
 @dataclass(frozen=True)
 class User(AnilistItem):
@@ -31,6 +33,7 @@ class User(AnilistItem):
     """
     username: str
     flag: str
+
 
 @dataclass(frozen=True)
 class AnilistEntry(AnilistItem):
@@ -48,9 +51,8 @@ class AnilistEntry(AnilistItem):
     url: str
     jp_title: str
     en_title: str
-    isAnime: bool
-    isTrash: bool
-    isLongAnime: bool
+    is_anime: bool
+    is_trash: bool
     episodes: int = 0
 
 
@@ -100,7 +102,7 @@ query ($page: Int, $mediaIds: [Int]) {
 }
 """
 
-#Reducing amount of data pulled to a bare minimum. This is all the data we need to make determinations.
+# Reducing amount of data pulled to a bare minimum. This is all the data we need to make determinations.
 GET_MEDIA_IN_USERS_LIST_query = """
 query ($page: Int, $userIds: [Int], $mediaIds: [Int]) {
   Page(page: $page, perPage: 50) {
@@ -128,6 +130,7 @@ query($userName: String) {
 }
 """
 
+
 def _get_all_pages(query, variables, *, query_field='mediaList', _page=0):
     response = _make_request(query, variables={**variables, 'page': _page})
 
@@ -142,6 +145,7 @@ def _get_all_pages(query, variables, *, query_field='mediaList', _page=0):
 
     return list(query_list)
 
+
 def _make_request(query: str, variables: dict):
     # retry on 429 after time specified in the response:
     while True:
@@ -153,10 +157,10 @@ def _make_request(query: str, variables: dict):
         if response.status_code != 429:
             break
 
-        #Per the docs, going over the rate limit leads to a 1-minute timeout. a 429 should also have a `Retry-After` header.
-        #Timeout is set at 62 seconds to ensure that we wait at least the minimum time even if the header doesn't exist.
-        #If the header does exist we'll use the value provided by it.
-        #Both values are padded an extra 2 seconds to make sure we don't end up making the request just before the timeout is lifted.
+        # Per the docs, going over the rate limit leads to a 1-minute timeout. a 429 should also have a `Retry-After` header.
+        # Timeout is set at 62 seconds to ensure that we wait at least the minimum time even if the header doesn't exist.
+        # If the header does exist we'll use the value provided by it.
+        # Both values are padded an extra 2 seconds to make sure we don't end up making the request just before the timeout is lifted.
         timeout_seconds = 62
         if "Retry-After" in response.headers:
             timeout_seconds = int(response.headers["Retry-After"]) + 2
@@ -164,8 +168,9 @@ def _make_request(query: str, variables: dict):
         print(f'429: {response}. Waiting {timeout_seconds} seconds...', file=sys.stderr)
         time.sleep(timeout_seconds)
 
-    time.sleep(0.7) #This should _theoretically_ mean we never hit the 429 again.
+    time.sleep(0.7)  # This should _theoretically_ mean we never hit the 429 again.
     return response.json()
+
 
 def get_users_media(users: list[User], media: set[AnilistEntry]) -> defaultdict[User, list[AnilistEntry]]:
     # Sorting for caching
@@ -181,8 +186,10 @@ def get_users_media(users: list[User], media: set[AnilistEntry]) -> defaultdict[
 
     return user_dict
 
+
 def get_media_information(media_ids: list[int]):
     return _get_media_information(sorted(media_ids))
+
 
 @cache.memoize()
 def get_user_id(user_name: str) -> int | None:
