@@ -18,7 +18,7 @@ USERNAMES_FILE_NAME = Path('./data/usernames.txt')
 POOL_FILE_NAME = Path('./data/pool.txt')
 
 anilist_pool: list[AnilistEntry] = []
-anilist_users = OrderedDict()  # We want to preserve the original insertion order. This is to help Frazzle copy paste the output
+anilist_users = OrderedDict()  # We want to preserve the original insertion order. This is to help Frazzle copy-paste the output
 staff_selections = defaultdict(int)
 trash_selections = defaultdict(int)
 
@@ -172,19 +172,19 @@ if __name__ == '__main__':
     print("\nStaff/Veteran Specials:\n")
 
 
-    def write_output(filename: str, assignments: dict[User, AnilistEntry]):
+    def write_output(filename: str, assignments: dict[User, AnilistEntry], contract_type: str = "Staff"):
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
             csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
-            csvwriter.writerow(['Username', 'Assigned Media', 'Type', 'Anilist Link'])
+            csvwriter.writerow(['Username', 'Assigned Media', 'Media Type', 'Contract Type', 'Anilist Link'])
             for user, media in assignments.items():
                 csvwriter.writerow([user.username, media.en_title if media.en_title else media.jp_title,
-                                    'Anime' if media.is_anime else 'Manga', media.url])
+                                    'Anime' if media.is_anime else 'Manga', contract_type, media.url])
                 print(
                     f"{user.username}: \"{media.en_title if media.en_title else media.jp_title}\" {'Anime' if media.is_anime else 'Manga'}")
 
 
-    write_output('data/assigned_staff.csv', users_assigned_staff)
-    write_output('data/assigned_trash.csv', users_assigned_trash)
+    write_output('data/assigned_staff.csv', users_assigned_staff, contract_type="Staff")
+    write_output('data/assigned_trash.csv', users_assigned_trash, contract_type="Trash")
 
     print("\n------------------------------------\nStats:\n")
     missing_staff_list = [u for u in users_assigned_staff if users_assigned_staff[u] == -1]
