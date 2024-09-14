@@ -145,7 +145,7 @@ def _make_request(query: str, variables: dict):
             break
 
         #Per the docs, going over the rate limit leads to a 1-minute timeout. a 429 should also have a `Retry-After` header.
-        #Timeout is set at 61 seconds to ensure that we wait at least the minimum time even if the header doesn't exist.
+        #Timeout is set at 62 seconds to ensure that we wait at least the minimum time even if the header doesn't exist.
         #If the header does exist we'll use the value provided by it.
         #Both values are padded an extra 2 seconds to make sure we don't end up making the request just before the timeout is lifted.
         timeout_seconds = 62
@@ -155,23 +155,32 @@ def _make_request(query: str, variables: dict):
         print(f'429: {response}. Waiting {timeout_seconds} seconds...', file=sys.stderr)
         time.sleep(timeout_seconds)
 
+    time.sleep(0.7) #This should _theoretically_ mean we never hit the 429 again.
     return response.json()
 
 def get_media_users_are_ineligible_for(user_ids: list[int], media_ids: set[int]) -> defaultdict[int, list[int]]:
     # Sorting for caching
-    return _get_media_users_are_ineligible_for(sorted(user_ids), sorted(media_ids))
+    data = _get_media_users_are_ineligible_for(sorted(user_ids), sorted(media_ids))
+
+    # Default dicts are great.
+    user_dict = defaultdict(list)
+    for list_item in data:
+        if list_item["status"] == 'PLANNING': continue
+        user_dict[int(list_item['user']['id'])].append(int(list_item['media']['id']))
+
+    return user_dict
 
 def get_media_information(media_ids: list[int]):
     return _get_media_information(sorted(media_ids))
 
 @cache.memoize()
-def get_user_id(user: User) -> int | None:
+def get_user_id(user_name: str) -> int | None:
     response = _make_request(query=GET_USER_ID_QUERY, variables={
-        'userName': user.username
+        'userName': user_name
     })
 
     if 'errors' in response and len(response['errors']) != 0:
-        print(f'{user.username} not found ({response})', file=sys.stderr)
+        print(f'{user_name} not found ({response})', file=sys.stderr)
         return None
 
     return response['data']['User']['id']
@@ -179,21 +188,12 @@ def get_user_id(user: User) -> int | None:
 
 @cache.memoize()
 def _get_media_information(media_ids: list[int]):
-    data = _get_all_pages(query=GET_MEDIA_INFORMATION_query, query_field="media", variables={'mediaIds': media_ids})
-    return data
+    return _get_all_pages(query=GET_MEDIA_INFORMATION_query, query_field="media", variables={'mediaIds': media_ids})
 
 
 @cache.memoize()
-def _get_media_users_are_ineligible_for(user_ids: list[int], media_ids: list[int]) -> defaultdict[int, list[int]]:
-    data = _get_all_pages(query=GET_MEDIA_IN_USERS_LIST_query, variables={
+def _get_media_users_are_ineligible_for(user_ids: list[int], media_ids: list[int]) -> list:
+    return _get_all_pages(query=GET_MEDIA_IN_USERS_LIST_query, variables={
         'userIds': user_ids,
         'mediaIds': media_ids
     })
-
-    # Default dicts are great.
-    user_dict = defaultdict(list)
-    for list_item in data:
-        if list_item["status"] != 'PLANNING': continue
-        user_dict[int(list_item['user']['id'])].append(int(list_item['media']['id']))
-
-    return user_dict

@@ -27,6 +27,7 @@ def select_anime(possible_media: list[int], is_trash: bool = False) -> int:
 
     choice = choices[0]
     for c in choices[1:]:
+        if c == -1: continue
         if is_trash and trash_selections[c] < trash_selections[choice]: choice = c
         if not is_trash and staff_selections[c] < staff_selections[choice]: choice = c
 
@@ -34,7 +35,7 @@ def select_anime(possible_media: list[int], is_trash: bool = False) -> int:
         trash_selections[choice] += 1
     else:
         staff_selections[choice] += 1
-    return choice[0]
+    return choice
 
 if __name__ == '__main__':
     anilist_links = _parse_file(POOL_FILE_NAME)
@@ -77,7 +78,9 @@ if __name__ == '__main__':
         else:
             match = us[0]
 
+        print(f"Getting id for user: {match}")
         user_id = anilist.get_user_id(match)
+        print(f"user_id: {user_id}")
         if user_id is None:
             print(f'Anilist user not found: {u}', file=sys.stderr)
             continue
@@ -172,8 +175,32 @@ if __name__ == '__main__':
 
     print("\nStaff/Veteran Specials:\n")
     for user, media in users_assigned_staff.items():
-        print(f"{anilist_users[user].username}: \"{anilist_media_information[media].en_title}\" {'Anime' if anilist_media_information[media].isAnime else 'Manga'}")
+        print(f"{anilist_users[user].username}: \"{anilist_media_information[media].en_title if anilist_media_information[media].en_title else anilist_media_information[media].jp_title}\" {'Anime' if anilist_media_information[media].isAnime else 'Manga'}")
 
     print("\n------------------------------------\nTrash Specials:\n")
     for user, media in users_assigned_trash.items():
-        print(f"{anilist_users[user].username}: \"{anilist_media_information[media].en_title}\" {'Anime' if anilist_media_information[media].isAnime else 'Manga'}")
+        print(f"{anilist_users[user].username}: \"{anilist_media_information[media].en_title if anilist_media_information[media].en_title else anilist_media_information[media].jp_title}\" {'Anime' if anilist_media_information[media].isAnime else 'Manga'}")
+
+    print("\n------------------------------------\nStats:\n")
+    missing_staff_list = [u for u in users_assigned_staff if users_assigned_staff[u] == -1]
+    print(f"Users not Assigned a staff/veteran special: {len(missing_staff_list)}")
+
+    if len(missing_staff_list) > 0:
+        for u in missing_staff_list:
+            print(anilist_users[u].username)
+
+    missing_trash_list = [u for u in users_assigned_trash if users_assigned_trash[u] == -1]
+    print(f"Users not Assigned a trash special: {len(missing_trash_list)}")
+
+    if len(missing_trash_list) > 0:
+        for u in missing_staff_list:
+            print(anilist_users[u].username)
+
+    print("\n------------------------------------\nAssignment Counts:\n")
+    print("Staff/Veteran Specials:")
+    for a in special_anime:
+        print(f"anilist id: {a}, title: {anilist_media_information[a].en_title if anilist_media_information[a].en_title else anilist_media_information[a].jp_title}, count: {staff_selections[a]}")
+    print()
+    print("Trash Specials:")
+    for a in trash_anime:
+        print(f"{anilist_media_information[a].en_title if anilist_media_information[a].en_title else anilist_media_information[a].jp_title}: {trash_selections[a]}")
