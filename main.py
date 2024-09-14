@@ -190,7 +190,7 @@ if __name__ == '__main__':
             print(anilist_users[u].username)
 
     missing_trash_list = [u for u in users_assigned_trash if users_assigned_trash[u] == -1]
-    print(f"Users not Assigned a trash special: {len(missing_trash_list)}")
+    print(f"\nUsers not Assigned a trash special: {len(missing_trash_list)}")
 
     if len(missing_trash_list) > 0:
         for u in missing_staff_list:
@@ -200,7 +200,6 @@ if __name__ == '__main__':
     print("Staff/Veteran Specials:")
     for a in special_anime:
         print(f"anilist id: {a}, title: {anilist_media_information[a].en_title if anilist_media_information[a].en_title else anilist_media_information[a].jp_title}, count: {staff_selections[a]}")
-    print()
-    print("Trash Specials:")
+    print("\nTrash Specials:")
     for a in trash_anime:
         print(f"{anilist_media_information[a].en_title if anilist_media_information[a].en_title else anilist_media_information[a].jp_title}: {trash_selections[a]}")
