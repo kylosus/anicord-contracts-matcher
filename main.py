@@ -1,7 +1,10 @@
 import random
 import re
 import sys
+import warnings
+import csv
 from collections import defaultdict, OrderedDict
+from os import write
 from pathlib import Path
 
 import anilist
@@ -93,9 +96,7 @@ if __name__ == '__main__':
         else:
             match = us[0]
 
-        print(f"Getting id for user: {match}")
         user_id = anilist.get_user_id(match)
-        print(f"user_id: {user_id}")
         if user_id is None:
             print(f'Anilist user not found: {u}', file=sys.stderr)
             continue
@@ -169,14 +170,21 @@ if __name__ == '__main__':
         users_assigned_trash[u] = media
 
     print("\nStaff/Veteran Specials:\n")
-    for user, media in users_assigned_staff.items():
-        print(
-            f"{user.username}: \"{media.en_title if media.en_title else media.jp_title}\" {'Anime' if media.is_anime else 'Manga'}")
 
-    print("\n------------------------------------\nTrash Specials:\n")
-    for user, media in users_assigned_trash.items():
-        print(
-            f"{user.username}: \"{media.en_title if media.en_title else media.jp_title}\" {'Anime' if media.is_anime else 'Manga'}")
+
+    def write_output(filename: str, assignments: dict[User, AnilistEntry]):
+        with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+            csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+            csvwriter.writerow(['Username', 'Assigned Media', 'Type', 'Anilist Link'])
+            for user, media in assignments.items():
+                csvwriter.writerow([user.username, media.en_title if media.en_title else media.jp_title,
+                                    'Anime' if media.is_anime else 'Manga', media.url])
+                print(
+                    f"{user.username}: \"{media.en_title if media.en_title else media.jp_title}\" {'Anime' if media.is_anime else 'Manga'}")
+
+
+    write_output('data/assigned_staff.csv', users_assigned_staff)
+    write_output('data/assigned_trash.csv', users_assigned_trash)
 
     print("\n------------------------------------\nStats:\n")
     missing_staff_list = [u for u in users_assigned_staff if users_assigned_staff[u] == -1]
@@ -201,3 +209,12 @@ if __name__ == '__main__':
     print("\nTrash Specials:")
     for a in trash_anime:
         print(f"{a.en_title if a.en_title else a.jp_title}: {trash_selections[a]}")
+
+    # print("\n------------------------------------\nLength Check for users assigned from both lists:\n")
+    # for u in both_users:
+    #     if users_assigned_staff[u].episodes > 16 and users_assigned_trash[u].episodes > 16:
+    #         warnings.warn(f"User: {u.username.ljust(20)} was assigned two long anime shows. Please double check this! (there should be another warning higher in the console for this same user)")
+    #     elif users_assigned_staff[u].episodes > 16 or users_assigned_trash[u].episodes > 16:
+    #         print(f"User: {u.username.ljust(20)} was assigned one long and one short show")
+    #     else:
+    #         print(f"User: {u.username.ljust(20)} was assigned two shorts shows")
