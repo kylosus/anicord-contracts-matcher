@@ -51,6 +51,7 @@ class AnilistEntry(AnilistItem):
     isAnime: bool
     isTrash: bool
     isLongAnime: bool
+    episodes: int = 0
 
 
 # Cache for 1 year because the library hates me

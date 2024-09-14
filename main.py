@@ -54,15 +54,19 @@ if __name__ == '__main__':
     for entry in anilist_data:
         item_id = int(entry["id"]) #Pre-extracting only things that need read multiple times for human readability.
         isAnime = entry["type"] == "ANIME"
-        isLongAnime = False if not isAnime else entry["episodes"] >= 16
-        anilist_media_information[item_id] = anilist.AnilistEntry(
-            item_id=item_id,
+        episodes = entry['episodes'] or 18 # TODO
+
+        isLongAnime = False if not isAnime else episodes >= 16
+        anilist_pool.append(AnilistEntry(
+            id=item_id,
             url=entry["siteUrl"],
             jp_title=entry["title"]["romaji"],
-            en_title = entry["title"]["english"],
+            en_title=entry["title"]["english"],
             isAnime=isAnime,
             isLongAnime=isLongAnime,
-            isTrash=anilist_isTrash[item_id])
+            isTrash=anilist_isTrash[item_id],
+            episodes=episodes)
+        )
 
     #Get user ids for all participating members.
     for u in anilist_usernames_file:
