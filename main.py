@@ -84,35 +84,30 @@ if __name__ == '__main__':
         if user_id is None:
             print(f'Anilist user not found: {u}', file=sys.stderr)
             continue
-        anilist_users[user_id] = anilist.User(match, us[2] if us[2] else anilist.DEFAULT_CONTRACT_TYPE, int(user_id))
+        anilist_users[user_id] = anilist.User(id=int(user_id), username=match, flag=us[2] if us[2] else anilist.DEFAULT_CONTRACT_TYPE)
 
     # We now have the background information to allow us to start assigning anime.
 
     # both_users exists to allow us to do some optimizations around who gets what and disallowing double 2-cours.
     # These are in insertion order because anilist_users is an OrderedDict
-    trash_users = [int(k) for k,v in anilist_users.items() if v.flag in {"T", "B"}]
-    staff_users = [int(k) for k,v in anilist_users.items() if v.flag in {"S", "B"}]
-    both_users = [int(k) for k,v in anilist_users.items() if v.flag == "B"]
+    trash_users = [u for _, u in anilist_users.items() if u.flag in {"T", "B"}]
+    staff_users = [u for _, u in anilist_users.items() if u.flag in {"S", "B"}]
+    both_users = [u for _, u in anilist_users.items() if u.flag == "B"]
 
-    trash_anime = set([k for k, v in anilist_media_information.items() if v.isTrash])
-    special_anime = set([k for k, v in anilist_media_information.items() if not v.isTrash])
+    trash_anime = set(filter(lambda m: m.isTrash, anilist_pool))
+    special_anime = set(filter(lambda m: not m.isTrash, anilist_pool))
 
-    # Get the lists of media that the user has seen at least some of on Anilist
-    staff_media_users_ineligible_for = anilist.get_media_users_are_ineligible_for(user_ids=staff_users, media_ids=special_anime)
-    trash_media_users_ineligible_for = anilist.get_media_users_are_ineligible_for(user_ids=trash_users, media_ids=trash_anime)
+    # Get media present in users' lists
+    staff_users_media = anilist.get_users_media(users=staff_users, media=special_anime)
+    trash_users_media = anilist.get_users_media(users=trash_users, media=trash_anime)
 
-    #We can now generate lists for which anime the user _is_ eligible to be selected for.
-    staff_media_users_eligible_for: dict[int, list[int]] = {} #Key is User ID, value is a list of Media IDs that user is eligible to be given.
-    trash_media_users_eligible_for: dict[int, list[int]] = {}
+    # Eligible selections for staff and trash users
+    staff_users_eligible_media = {u: list(special_anime.difference(staff_users_media[u])) for u in staff_users}
+    trash_users_eligible_media = {u: list(special_anime.difference(trash_users_media[u])) for u in trash_users}
 
-    for u in staff_users:
-        staff_media_users_eligible_for[u] = list(special_anime.difference(staff_media_users_ineligible_for[u]))
-
-    for u in trash_users:
-        trash_media_users_eligible_for[u] = list(special_anime.difference(trash_media_users_ineligible_for[u]))
-
-    users_assigned_staff = dict[int, int]() #Key is User ID, Value is media ID, we'll then format the data out of the respective dicts at the end.
-    users_assigned_trash = dict[int, int]()
+    # Final assignments
+    users_assigned_staff = dict[User, AnilistEntry]()
+    users_assigned_trash = dict[User, AnilistEntry]()
 
     # Users that signed up for both get priority because Bpen says so (also because they're most likely to throw the selection balance out of whack).
 
@@ -163,23 +158,21 @@ if __name__ == '__main__':
 
     for u in staff_users:
         if u in both_users: continue
-        anime_id = select_anime(staff_media_users_eligible_for[u], False)
-        users_assigned_staff[u] = anime_id
+        media = select_anime(staff_users_eligible_media[u])
+        users_assigned_staff[u] = media
 
     for u in trash_users:
         if u in both_users: continue
-        anime_id = select_anime(trash_media_users_eligible_for[u], True)
-        users_assigned_trash[u] = anime_id
-
-    anilist_media_information[-1] = anilist.AnilistEntry(-1, "***NOTHING***", "***NOTHING***", "***NOTHING***", False, False, False)
+        media = select_anime(trash_users_eligible_media[u])
+        users_assigned_trash[u] = media
 
     print("\nStaff/Veteran Specials:\n")
     for user, media in users_assigned_staff.items():
-        print(f"{anilist_users[user].username}: \"{anilist_media_information[media].en_title if anilist_media_information[media].en_title else anilist_media_information[media].jp_title}\" {'Anime' if anilist_media_information[media].isAnime else 'Manga'}")
+        print(f"{user.username}: \"{media.en_title if media.en_title else media.jp_title}\" {'Anime' if media.isAnime else 'Manga'}")
 
     print("\n------------------------------------\nTrash Specials:\n")
     for user, media in users_assigned_trash.items():
-        print(f"{anilist_users[user].username}: \"{anilist_media_information[media].en_title if anilist_media_information[media].en_title else anilist_media_information[media].jp_title}\" {'Anime' if anilist_media_information[media].isAnime else 'Manga'}")
+        print(f"{user.username}: \"{media.en_title if media.en_title else media.jp_title}\" {'Anime' if media.isAnime else 'Manga'}")
 
     print("\n------------------------------------\nStats:\n")
     missing_staff_list = [u for u in users_assigned_staff if users_assigned_staff[u] == -1]
@@ -187,19 +180,20 @@ if __name__ == '__main__':
 
     if len(missing_staff_list) > 0:
         for u in missing_staff_list:
-            print(anilist_users[u].username)
+            print(u.username)
 
     missing_trash_list = [u for u in users_assigned_trash if users_assigned_trash[u] == -1]
     print(f"\nUsers not Assigned a trash special: {len(missing_trash_list)}")
 
     if len(missing_trash_list) > 0:
         for u in missing_staff_list:
-            print(anilist_users[u].username)
+            print(u.username)
 
     print("\n------------------------------------\nAssignment Counts:\n")
     print("Staff/Veteran Specials:")
     for a in special_anime:
-        print(f"anilist id: {a}, title: {anilist_media_information[a].en_title if anilist_media_information[a].en_title else anilist_media_information[a].jp_title}, count: {staff_selections[a]}")
+        print(f"anilist id: {a.id}, title: {a.en_title if a.en_title else a.jp_title}, count: {staff_selections[a]}")
+
     print("\nTrash Specials:")
     for a in trash_anime:
-        print(f"{anilist_media_information[a].en_title if anilist_media_information[a].en_title else anilist_media_information[a].jp_title}: {trash_selections[a]}")
+        print(f"{a.en_title if a.en_title else a.jp_title}: {trash_selections[a]}")

@@ -1,15 +1,25 @@
 import sys
 import time
 from collections import defaultdict
-from typing import NamedTuple
+from dataclasses import dataclass
 
 import requests
 from mezmorize import Cache
 
 DEFAULT_CONTRACT_TYPE = "S"
 
+@dataclass(frozen=True)
+class AnilistItem:
+    id: int
 
-class User(NamedTuple):
+    def __hash__(self):
+        return hash(self.id)
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+@dataclass(frozen=True)
+class User(AnilistItem):
     """
     An anicord user.
     Attributes:
@@ -21,10 +31,9 @@ class User(NamedTuple):
     """
     username: str
     flag: str
-    user_id: int
 
-
-class AnilistEntry(NamedTuple):
+@dataclass(frozen=True)
+class AnilistEntry(AnilistItem):
     """
     An entry on Anilist
     Attributes:
@@ -36,7 +45,6 @@ class AnilistEntry(NamedTuple):
         isTrash: Whether the entry is for Trash Specials (true) or Staff/Veteran Specials (false).
         isLongAnime: Whether the anime is 16+ Episodes, should always be false if isAnime is false.
     """
-    item_id: int
     url: str
     jp_title: str
     en_title: str
@@ -158,8 +166,10 @@ def _make_request(query: str, variables: dict):
     time.sleep(0.7) #This should _theoretically_ mean we never hit the 429 again.
     return response.json()
 
-def get_media_users_are_ineligible_for(user_ids: list[int], media_ids: set[int]) -> defaultdict[int, list[int]]:
+def get_users_media(users: list[User], media: set[AnilistEntry]) -> defaultdict[User, list[AnilistEntry]]:
     # Sorting for caching
+    user_ids = [u.id for u in users]
+    media_ids = [m.id for m in media]
     data = _get_media_users_are_ineligible_for(sorted(user_ids), sorted(media_ids))
 
     # Default dicts are great.
