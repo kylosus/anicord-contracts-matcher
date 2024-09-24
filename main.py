@@ -183,7 +183,7 @@ if __name__ == '__main__':
                     f"{user.username}: \"{media.en_title if media.en_title else media.jp_title}\" {'Anime' if media.is_anime else 'Manga'}")
 
 
-    write_output('data/assigned_staff.csv', users_assigned_staff, contract_type="Staff")
+    write_output('data/assigned_staff.csv', users_assigned_staff, contract_type="Veteran")
     write_output('data/assigned_trash.csv', users_assigned_trash, contract_type="Trash")
 
     print("\n------------------------------------\nStats:\n")
