@@ -201,6 +201,8 @@ def get_media_information(media_ids: list[int]):
 
 @cache.memoize()
 def get_user_id(user_name: str) -> int | None:
+    print(f'Fetching user {user_name}')
+
     response = _make_request(query=GET_USER_ID_QUERY, variables={
         'userName': user_name
     })
@@ -219,6 +221,8 @@ def _get_media_information(media_ids: list[int]):
 
 @cache.memoize()
 def _get_media_users_are_ineligible_for(user_ids: list[int], media_ids: list[int]) -> list:
+    print('Fetching media')
+
     return _get_all_pages(query=GET_MEDIA_IN_USERS_LIST_query, variables={
         'userIds': user_ids,
         'mediaIds': media_ids
