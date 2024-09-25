@@ -119,8 +119,13 @@ if __name__ == '__main__':
     trash_users_media = anilist.get_users_media(users=trash_users, media=trash_anime)
 
     # Eligible selections for staff and trash users
-    staff_users_eligible_media = {u: list(special_anime.difference(staff_users_media[u])) for u in staff_users}
-    trash_users_eligible_media = {u: list(special_anime.difference(trash_users_media[u])) for u in trash_users}
+    # staff_users_eligible_media = {u: list(special_anime.difference(staff_users_media[u])) for u in staff_users}
+    # trash_users_eligible_media = {u: list(trash_anime.difference(trash_users_media[u])) for u in trash_users}
+
+    # Eligible selections for staff and trash users
+    staff_users_eligible_media = {u: [a for a in special_anime if a.id not in staff_users_media[u]] for u in
+                                  staff_users}
+    trash_users_eligible_media = {u: [a for a in trash_anime if a.id not in trash_users_media[u]] for u in trash_users}
 
     # Final assignments
     users_assigned_staff = dict[User, AnilistEntry]()

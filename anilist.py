@@ -14,10 +14,14 @@ class AnilistItem:
     id: int
 
     def __hash__(self):
-        return hash(self.id)
+        return self.id
 
     def __eq__(self, other):
-        return self.id == other.id
+        print(other)
+        if isinstance(other, AnilistItem):
+            return self.id == other.id
+        else:
+            return self.id == other
 
 
 @dataclass(frozen=True)
@@ -174,6 +178,9 @@ def _make_request(query: str, variables: dict):
 
 def get_users_media(users: list[User], media: set[AnilistEntry]) -> defaultdict[User, list[AnilistEntry]]:
     # Sorting for caching
+    # TODO: inefficient
+    _user_map = {u.id: u for u in users}
+
     user_ids = [u.id for u in users]
     media_ids = [m.id for m in media]
     data = _get_media_users_are_ineligible_for(sorted(user_ids), sorted(media_ids))
@@ -182,7 +189,8 @@ def get_users_media(users: list[User], media: set[AnilistEntry]) -> defaultdict[
     user_dict = defaultdict(list)
     for list_item in data:
         if list_item["status"] == 'PLANNING': continue
-        user_dict[int(list_item['user']['id'])].append(int(list_item['media']['id']))
+        user_id = list_item['user']['id']
+        user_dict[_user_map[user_id]].append(int(list_item['media']['id']))
 
     return user_dict
 
