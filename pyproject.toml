@@ -6,10 +6,11 @@ dependencies = [
   "requests",
   "mezmorize",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 
 authors = [
   {name = "kylosus", email = "jokersus.cava@gmail.com"},
+  {name = "Bpendragon", email = "bpendragon@bpendragon.horse"}
 ]
 description = "Automatic AniList matching for Anicord Contracts"
 readme = "README.md"
